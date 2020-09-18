@@ -1,10 +1,12 @@
 // ==UserScript==
-// @name		TribeUpcomingAttacksGetter
-// @version		0.1
-// @author		szelbi
-// @website		https://szelbi.ovh/
-// @match		*://*.plemiona.pl/*
-// @grant		none
+// @name			TribeUpcomingAttacksGetter
+// @version			0.1.1
+// @author			szelbi
+// @website			https://szelbi.ovh/
+// @match			*://*.plemiona.pl/*
+// @grant			none
+// @updateURL		https://raw.githubusercontent.com/norbi1952/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
+// @downloadURL		https://raw.githubusercontent.com/norbi1952/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
 // ==/UserScript==
 
 
@@ -116,8 +118,8 @@
 
 	function buttonOnClick() {
 		disableButton(this);
-
-		let selectElement = getFirstElementByName("player_id");
+		
+		let selectElement = document.querySelector("form > select[name='player_id']");
 		if(selectElement) {
 			let selectOptions = [];
 
@@ -136,7 +138,7 @@
 
 	function getNextPlayerTroops(selectOptions) {
 		if(selectOptions.length) {
-			let selectElement = getFirstElementByName("player_id");
+			let selectElement = document.querySelector("form > select[name='player_id']");
 			if(selectElement) {
 				selectElement.value = selectOptions[0];
 				selectElement.form.submit();
@@ -198,15 +200,6 @@
 			}
 
 			sessionStorage.setItem("villageDictionary", JSON.stringify(villageDictionary));
-		}
-	}
-
-	function getFirstElementByName(elementName) {
-		let elements = document.getElementsByName(elementName);
-		if (elements.length) {
-			return elements[0];
-		} else {
-			return undefined;
 		}
 	}
 })();
