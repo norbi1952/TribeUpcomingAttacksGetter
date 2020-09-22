@@ -93,7 +93,7 @@
           disableButton(getTroopsButton);
 
           let selectOptions = JSON.parse(sessionStorageItem);
-          getNextPlayerTroops(selectOptions);
+          getNextPlayerAttacks(selectOptions);
         }
       } else {
         disableButton(getTroopsButton);
@@ -130,13 +130,13 @@
         }
       }
       sessionStorage.setItem("selectOptions", JSON.stringify(selectOptions));
-      getNextPlayerTroops(selectOptions);
+      getNextPlayerAttacks(selectOptions);
     }
   }
 
-  function getNextPlayerTroops(selectOptions) {
+  function getNextPlayerAttacks(selectOptions) {
     if (selectOptions.length && selectElement) {
-      getPlayerVillageAmount(getWorldNumFromUrl(), selectOptions, checkAmount);
+      getPlayerVillagesAmount(getWorldNumFromUrl(), selectOptions, checkAmount);
     } else {
       sessionStorage.removeItem("selectOptions");
 
@@ -218,7 +218,7 @@
     return url.match(/(?:pl)(\d*)(?:\.plemiona\.pl)/)[1];
   }
 
-  function getPlayerVillageAmount(worldNum, selectOptions, callback) {
+  function getPlayerVillagesAmount(worldNum, selectOptions, callback) {
     let xhttp;
 
     xhttp = new XMLHttpRequest();
@@ -258,7 +258,7 @@
       selectElement.value = id;
       selectElement.form.submit();
     } else {
-      getNextPlayerTroops(selectOptions);
+      getNextPlayerAttacks(selectOptions);
     }
   }
 
