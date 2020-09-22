@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          TribeUpcomingAttacksGetter
-// @version       0.2
+// @version       0.2.1
 // @author        szelbi
 // @website       https://szelbi.ovh/
 // @match         *://*.plemiona.pl/*
@@ -130,21 +130,13 @@
         }
       }
       sessionStorage.setItem("selectOptions", JSON.stringify(selectOptions));
-
       getNextPlayerTroops(selectOptions);
     }
   }
 
   function getNextPlayerTroops(selectOptions) {
-    if (selectOptions.length) {
-      if (selectElement) {
-        selectElement.value = selectOptions[0];
-        selectElement.form.submit();
-
-        selectOptions.shift();
-
-        sessionStorage.setItem("selectOptions", JSON.stringify(selectOptions));
-      }
+    if (selectOptions.length && selectElement) {
+      getPlayerVillageAmount(getWorldNumFromUrl(), selectOptions, checkAmount);
     } else {
       sessionStorage.removeItem("selectOptions");
 
@@ -184,12 +176,12 @@
       ".table-responsive > .vis > tbody > tr"
     );
 
-    let step = 1;
-    if (url.includes("screen=ally&mode=members_defense")) {
-      step = 2;
-    }
-
     if (tableRows && selectElement) {
+      let step = 1;
+      if (url.includes("screen=ally&mode=members_defense")) {
+        step = 2;
+      }
+
       let sessionStorageItem;
       let playersArray = [];
       if ((sessionStorageItem = sessionStorage.getItem("playersArray"))) {
@@ -219,6 +211,54 @@
         playersArray.push(player);
         sessionStorage.setItem("playersArray", JSON.stringify(playersArray));
       }
+    }
+  }
+
+  function getWorldNumFromUrl() {
+    return url.match(/(?:pl)(\d*)(?:\.plemiona\.pl)/)[1];
+  }
+
+  function getPlayerVillageAmount(worldNum, selectOptions, callback) {
+    let xhttp;
+
+    xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        let parser = new DOMParser();
+        const doc = parser.parseFromString(this.responseText, "text/html");
+
+        const headers = doc.querySelectorAll(
+          "#villages_list > thead > tr > th"
+        );
+        if (headers.length) {
+          for (const header of headers) {
+            const result = header.innerText.match(/(?:Wioski\s\()(\d*)(?:\))/);
+            if (result) {
+              callback(result[1], selectOptions);
+            }
+          }
+        }
+      }
+    };
+    xhttp.open(
+      "GET",
+      `https://pl${worldNum}.plemiona.pl/guest.php?screen=info_player&id=${selectOptions[0]}`,
+      true
+    );
+    xhttp.send();
+  }
+
+  function checkAmount(villageAmount, selectOptions) {
+    const id = selectOptions[0];
+
+    selectOptions.shift();
+    sessionStorage.setItem("selectOptions", JSON.stringify(selectOptions));
+
+    if (villageAmount > 0) {
+      selectElement.value = id;
+      selectElement.form.submit();
+    } else {
+      getNextPlayerTroops(selectOptions);
     }
   }
 
