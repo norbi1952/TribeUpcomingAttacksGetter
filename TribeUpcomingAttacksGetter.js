@@ -5,8 +5,8 @@
 // @website       https://szelbi.ovh/
 // @match         *://*.plemiona.pl/*
 // @grant         none
-// @updateURL     https://raw.githubusercontent.com/norbi1952/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
-// @downloadURL		https://raw.githubusercontent.com/norbi1952/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
+// @updateURL     https://raw.githubusercontent.com/sz3lbi/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
+// @downloadURL		https://raw.githubusercontent.com/sz3lbi/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
 // ==/UserScript==
 
 (function () {
