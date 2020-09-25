@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          TribeUpcomingAttacksGetter
-// @version       0.2.1
+// @version       0.2.2
 // @author        szelbi
 // @website       https://szelbi.ovh/
 // @match         *://*.plemiona.pl/*
@@ -23,23 +23,95 @@
     return;
   }
 
+  class Player {
+    constructor(name) {
+      this._name = name;
+      this._villages = [];
+    }
+
+    get name() {
+      return this._name;
+    }
+
+    set name(name) {
+      this._name = name;
+    }
+
+    get villages() {
+      return this._villages;
+    }
+
+    set villages(villages) {
+      this._villages = villages;
+    }
+
+    addVillage(village) {
+      if (village instanceof Village) {
+        this._villages.push(village);
+      }
+    }
+
+    removeVillage(village) {
+      const index = this._villages.indexOf(village);
+      if (index > -1) {
+        this._villages.splice(index, 1);
+      }
+    }
+
+    toJSON() {
+      return { name: this._name, villages: this._villages };
+    }
+  }
+
+  class Village {
+    constructor(coords, attacksIncoming) {
+      this._coords = coords;
+      this._attacksIncoming = attacksIncoming;
+    }
+
+    get coords() {
+      return this._coords;
+    }
+
+    set coords(coords) {
+      this._coords = coords;
+    }
+
+    get attacksIncoming() {
+      return this._attacksIncoming;
+    }
+
+    set attacksIncoming(attacksIncoming) {
+      this._attacksIncoming = attacksIncoming;
+    }
+
+    toJSON() {
+      return { coords: this._coords, attacksIncoming: this._attacksIncoming };
+    }
+  }
+
+  if (document.readyState == "complete") {
+    init();
+  } else {
+    window.addEventListener("load", init);
+  }
+  
   var selectElement;
 
-  document.onreadystatechange = () => {
-    if (document.readyState === "complete") {
-      selectElement = document.querySelector("form > select[name='player_id']");
-      getData();
+  function init() {
+    selectElement = document.querySelector("form > select[name='player_id']");
+    getData();
 
-      let getTroopsButton = document.createElement("button");
-      getTroopsButton.setAttribute("type", "button");
-      getTroopsButton.setAttribute("class", "btn btn-default float_right");
-      getTroopsButton.addEventListener("click", buttonOnClick);
-      getTroopsButton.innerHTML = "Pobierz dane o atakach";
+    let getTroopsButton = document.createElement("button");
+    getTroopsButton.setAttribute("type", "button");
+    getTroopsButton.setAttribute("class", "btn btn-default float_right");
+    getTroopsButton.addEventListener("click", buttonOnClick);
+    getTroopsButton.innerHTML = "Pobierz dane o atakach";
 
-      let allyContent = document.getElementById("ally_content");
-      allyContent.insertBefore(getTroopsButton, allyContent.firstChild);
+    let allyContent = document.getElementById("ally_content");
+    allyContent.insertBefore(getTroopsButton, allyContent.firstChild);
 
-      let modalCSS = `
+    let modalCSS = `
 				.modal {
 					display: none;
 					position: fixed;
@@ -76,33 +148,34 @@
 					resize: none;
 				}
 			`;
-      addCSS(modalCSS);
+    addCSS(modalCSS);
 
-      let modalDiv = document.createElement("div");
-      modalDiv.setAttribute("id", "js-modal");
-      modalDiv.setAttribute("class", "modal");
-      modalDiv.innerHTML =
-        '<div class="modal-content"><span class="close" id="js-close">&times;</span><p><textarea class="textarea" id="js-text-box"></textarea></p></div>';
-      allyContent.parentNode.insertBefore(modalDiv, allyContent.nextSibling);
+    let modalDiv = document.createElement("div");
+    modalDiv.setAttribute("id", "js-modal");
+    modalDiv.setAttribute("class", "modal");
+    modalDiv.innerHTML =
+      '<div class="modal-content"><span class="close" id="js-close">&times;</span><p><textarea class="textarea" id="js-text-box"></textarea></p></div>';
+    allyContent.parentNode.insertBefore(modalDiv, allyContent.nextSibling);
 
-      document.getElementById("js-close").onclick = closeModalOnClick;
+    document
+      .getElementById("js-close")
+      .addEventListener("click", closeModalOnClick);
 
-      if (typeof Storage !== "undefined") {
-        let sessionStorageItem;
-        if ((sessionStorageItem = sessionStorage.getItem("selectOptions"))) {
-          disableButton(getTroopsButton);
-
-          let selectOptions = JSON.parse(sessionStorageItem);
-          getNextPlayerAttacks(selectOptions);
-        }
-      } else {
+    if (typeof Storage !== "undefined") {
+      let sessionStorageItem;
+      if ((sessionStorageItem = sessionStorage.getItem("selectOptions"))) {
         disableButton(getTroopsButton);
-        alert(
-          'Twoja przeglądarka nie wspiera "Web Storage". Zaktualizuj ją do najnowszej wersji.'
-        );
+
+        let selectOptions = JSON.parse(sessionStorageItem);
+        getNextPlayerAttacks(selectOptions);
       }
+    } else {
+      disableButton(getTroopsButton);
+      alert(
+        'Twoja przeglądarka nie wspiera "Web Storage". Zaktualizuj ją do najnowszej wersji.'
+      );
     }
-  };
+  }
 
   function addCSS(css) {
     let style = document.createElement("style");
@@ -134,9 +207,26 @@
     }
   }
 
-  function getNextPlayerAttacks(selectOptions) {
+  async function getNextPlayerAttacks(selectOptions) {
     if (selectOptions.length && selectElement) {
-      getPlayerVillagesAmount(getWorldNumFromUrl(), selectOptions, checkAmount);
+      const id = selectOptions[0];
+
+      let villageAmount;
+      try {
+        villageAmount = await getPlayerVillagesAmount(getWorldNumFromUrl(), id);
+      } catch (error) {
+        console.log(error);
+      }
+
+      selectOptions.shift();
+      sessionStorage.setItem("selectOptions", JSON.stringify(selectOptions));
+
+      if (villageAmount > 0) {
+        selectElement.value = id;
+        selectElement.form.submit();
+      } else {
+        getNextPlayerAttacks(selectOptions);
+      }
     } else {
       sessionStorage.removeItem("selectOptions");
 
@@ -218,114 +308,39 @@
     return url.match(/(?:pl)(\d*)(?:\.plemiona\.pl)/)[1];
   }
 
-  function getPlayerVillagesAmount(worldNum, selectOptions, callback) {
-    let xhttp;
+  function getPlayerVillagesAmount(worldNum, id) {
+    return new Promise((resolve, reject) => {
+      let xhttp;
 
-    xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function () {
-      if (this.readyState == 4 && this.status == 200) {
-        let parser = new DOMParser();
-        const doc = parser.parseFromString(this.responseText, "text/html");
+      xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          let parser = new DOMParser();
+          const doc = parser.parseFromString(this.responseText, "text/html");
 
-        const headers = doc.querySelectorAll(
-          "#villages_list > thead > tr > th"
-        );
-        if (headers.length) {
-          for (const header of headers) {
-            const result = header.innerText.match(/(?:Wioski\s\()(\d*)(?:\))/);
-            if (result) {
-              callback(result[1], selectOptions);
+          const headers = doc.querySelectorAll(
+            "#villages_list > thead > tr > th"
+          );
+          if (headers.length) {
+            for (const header of headers) {
+              const result = header.innerText.match(
+                /(?:Wioski\s\()(\d*)(?:\))/
+              );
+              if (result) {
+                resolve(result[1]);
+              }
             }
+          } else {
+            reject(`Brak gracza o id ${id} na świecie ${worldNum}.`);
           }
         }
-      }
-    };
-    xhttp.open(
-      "GET",
-      `https://pl${worldNum}.plemiona.pl/guest.php?screen=info_player&id=${selectOptions[0]}`,
-      true
-    );
-    xhttp.send();
-  }
-
-  function checkAmount(villageAmount, selectOptions) {
-    const id = selectOptions[0];
-
-    selectOptions.shift();
-    sessionStorage.setItem("selectOptions", JSON.stringify(selectOptions));
-
-    if (villageAmount > 0) {
-      selectElement.value = id;
-      selectElement.form.submit();
-    } else {
-      getNextPlayerAttacks(selectOptions);
-    }
-  }
-
-  class Player {
-    constructor(name) {
-      this._name = name;
-      this._villages = [];
-    }
-
-    get name() {
-      return this._name;
-    }
-
-    set name(name) {
-      this._name = name;
-    }
-
-    get villages() {
-      return this._villages;
-    }
-
-    set villages(villages) {
-      this._villages = villages;
-    }
-
-    addVillage(village) {
-      if (village instanceof Village) {
-        this._villages.push(village);
-      }
-    }
-
-    removeVillage(village) {
-      const index = this._villages.indexOf(village);
-      if (index > -1) {
-        this._villages.splice(index, 1);
-      }
-    }
-
-    toJSON() {
-      return { name: this._name, villages: this._villages };
-    }
-  }
-
-  class Village {
-    constructor(coords, attacksIncoming) {
-      this._coords = coords;
-      this._attacksIncoming = attacksIncoming;
-    }
-
-    get coords() {
-      return this._coords;
-    }
-
-    set coords(coords) {
-      this._coords = coords;
-    }
-
-    get attacksIncoming() {
-      return this._attacksIncoming;
-    }
-
-    set attacksIncoming(attacksIncoming) {
-      this._attacksIncoming = attacksIncoming;
-    }
-
-    toJSON() {
-      return { coords: this._coords, attacksIncoming: this._attacksIncoming };
-    }
+      };
+      xhttp.open(
+        "GET",
+        `https://pl${worldNum}.plemiona.pl/guest.php?screen=info_player&id=${id}`,
+        true
+      );
+      xhttp.send();
+    });
   }
 })();
