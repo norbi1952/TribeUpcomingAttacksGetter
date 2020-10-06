@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          TribeUpcomingAttacksGetter
-// @version       0.2.2
+// @version       0.2.3
 // @author        szelbi
 // @website       https://szelbi.ovh/
 // @match         *://*.plemiona.pl/*
@@ -14,12 +14,16 @@
 
   var url = window.location.href;
 
+  function emptySessionStorage() {
+    sessionStorage.removeItem("selectOptions");
+    sessionStorage.removeItem("playersArray");
+  }
+
   if (
     !url.includes("screen=ally&mode=members_troops") &&
     !url.includes("screen=ally&mode=members_defense")
   ) {
-    sessionStorage.removeItem("selectOptions");
-    sessionStorage.removeItem("playersArray");
+    emptySessionStorage();
     return;
   }
 
@@ -95,7 +99,7 @@
   } else {
     window.addEventListener("load", init);
   }
-  
+
   var selectElement;
 
   function init() {
@@ -193,6 +197,7 @@
   }
 
   function buttonOnClick() {
+    emptySessionStorage();
     disableButton(this);
 
     if (selectElement) {
@@ -266,7 +271,12 @@
       ".table-responsive > .vis > tbody > tr"
     );
 
-    if (tableRows && selectElement) {
+    if (tableRows.length && selectElement) {
+      const headerStrong = tableRows[0].querySelector("th > strong");
+      if (headerStrong === null) {
+        return;
+      }
+
       let step = 1;
       if (url.includes("screen=ally&mode=members_defense")) {
         step = 2;
