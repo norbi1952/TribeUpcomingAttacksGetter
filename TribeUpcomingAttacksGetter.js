@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name          TribeUpcomingAttacksGetter
-// @version       0.2.3
+// @version       0.2.4
 // @author        szelbi
 // @website       https://szelbi.ovh/
-// @match         *://*.plemiona.pl/*
+// @match         */game.php*
 // @grant         none
 // @updateURL     https://raw.githubusercontent.com/sz3lbi/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
-// @downloadURL		https://raw.githubusercontent.com/sz3lbi/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
+// @downloadURL   https://raw.githubusercontent.com/sz3lbi/TribeUpcomingAttacksGetter/master/TribeUpcomingAttacksGetter.js
 // ==/UserScript==
 
 (function () {
@@ -110,7 +110,7 @@
     getTroopsButton.setAttribute("type", "button");
     getTroopsButton.setAttribute("class", "btn btn-default float_right");
     getTroopsButton.addEventListener("click", buttonOnClick);
-    getTroopsButton.innerHTML = "Pobierz dane o atakach";
+    getTroopsButton.innerHTML = "Get attack data";
 
     let allyContent = document.getElementById("ally_content");
     allyContent.insertBefore(getTroopsButton, allyContent.firstChild);
@@ -176,7 +176,7 @@
     } else {
       disableButton(getTroopsButton);
       alert(
-        'Twoja przeglądarka nie wspiera "Web Storage". Zaktualizuj ją do najnowszej wersji.'
+        'Your browser does not support "Web Storage". Update it to the latest version.'
       );
     }
   }
@@ -218,7 +218,8 @@
 
       let villageAmount;
       try {
-        villageAmount = await getPlayerVillagesAmount(getWorldNumFromUrl(), id);
+        const urlInfo = getInfoFromUrl();
+        villageAmount = await getPlayerVillagesAmount(urlInfo[1], urlInfo[2], id);
       } catch (error) {
         console.log(error);
       }
@@ -259,7 +260,7 @@
       }
 
       if (!text) {
-        text = "Brak ataków na graczy.";
+        text = "No attacks at players.";
       }
       document.getElementById("js-text-box").value = text.trim();
       document.getElementById("js-modal").style.display = "block";
@@ -314,11 +315,11 @@
     }
   }
 
-  function getWorldNumFromUrl() {
-    return url.match(/(?:pl)(\d*)(?:\.plemiona\.pl)/)[1];
+  function getInfoFromUrl() {
+    return url.match(/([a-zA-Z]+\d+)(?:\.)([a-zA-Z\.]+)/);
   }
 
-  function getPlayerVillagesAmount(worldNum, id) {
+  function getPlayerVillagesAmount(world, domain, id) {
     return new Promise((resolve, reject) => {
       let xhttp;
 
@@ -334,20 +335,20 @@
           if (headers.length) {
             for (const header of headers) {
               const result = header.innerText.match(
-                /(?:Wioski\s\()(\d*)(?:\))/
+                /(?:[a-zA-z]+\s\()(\d*)(?:\))/
               );
               if (result) {
                 resolve(result[1]);
               }
             }
           } else {
-            reject(`Brak gracza o id ${id} na świecie ${worldNum}.`);
+            reject(`No player with id ${id} in world ${world}.`);
           }
         }
       };
       xhttp.open(
         "GET",
-        `https://pl${worldNum}.plemiona.pl/guest.php?screen=info_player&id=${id}`,
+        `https://${world}.${domain}/guest.php?screen=info_player&id=${id}`,
         true
       );
       xhttp.send();
